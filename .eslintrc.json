@@ -2,6 +2,8 @@
   "extends": ["oldbros"],
   "rules": {
     "max-len": ["error", 120],
-    "camelcase": "warn"
+    "camelcase": "warn",
+    "new-cap": "warn",
+    "consistent-return": ["error", { "treatUndefinedAsUnspecified": true }]
   }
 }

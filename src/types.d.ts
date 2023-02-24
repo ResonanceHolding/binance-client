@@ -1,3 +1,7 @@
+export type Symbol = string;
+export type StreamType = 'aggTrade' | 'trade';
+export type BinanceStream = Symbol | StreamType;
+
 export type CcxwsRequiredEvents = 'trade' | 'error';
 
 export type Market = {

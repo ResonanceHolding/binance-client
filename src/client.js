@@ -4,7 +4,7 @@
  *
  */
 
-import { EventEmitter } from 'node:events';
+const { EventEmitter } = require('node:events');
 
 /**
  * @implements {IClient}

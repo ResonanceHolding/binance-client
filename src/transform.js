@@ -1,4 +1,4 @@
-export class Trade {
+class Trade {
   constructor(props) {
     this.exchange = props.exchange;
     this.quote = props.quote;
@@ -28,9 +28,9 @@ export class Trade {
  * @param {import('./types').AggTradeResponse} msg
  * @param {import('./types').Market} market
  * @param {string} exchange
- * @returns {Trade}
+ * @returns {import('./types').Trade}
  */
-export const transformAggTrade = (msg, market, exchange) => {
+const transformAggTrade = (msg, market, exchange) => {
   const { a: trade_id, p: price, q: size, T: time, m: buyer } = msg.data;
   const unix = time;
   const amount = size;
@@ -52,9 +52,9 @@ export const transformAggTrade = (msg, market, exchange) => {
  * @param {import('./types').RawTradeResponse} msg
  * @param {import('./types').Market} market
  * @param {string} exchange
- * @returns {Trade}
+ * @returns {import('./types').Trade}
  */
-export const transformRawTrade = (msg, market, exchange) => {
+const transformRawTrade = (msg, market, exchange) => {
   const { t: trade_id, p: price, q: size, b: buyOrderId, a: sellOrderId, T: time, m: buyer } = msg.data;
   const unix = time;
   const amount = size;
@@ -72,3 +72,5 @@ export const transformRawTrade = (msg, market, exchange) => {
     sellOrderId,
   });
 };
+
+module.exports = { Trade, transformAggTrade, transformRawTrade };
