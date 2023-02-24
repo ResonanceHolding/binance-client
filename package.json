@@ -1,0 +1,43 @@
+{
+  "name": "",
+  "version": "0.0.0",
+  "description": "",
+  "main": "src/main.js",
+  "types": "types/main.d.ts",
+  "type": "module",
+  "scripts": {
+    "check": "npx tsc --project tsconfig.json",
+    "types": "rm -rf types && npx tsc --project tsconfig.types.json",
+    "lint": "eslint .",
+    "fmt": "eslint --fix .",
+    "docs": "npx typedoc --entryPointStrategy packages .",
+    "test": "npx c8 --check-coverage tap --no-coverage",
+    "final": "npm run fmt && npm run check && npm run lint && npm run test && npm run types && npm run docs"
+  },
+  "repository": {
+    "type": "",
+    "url": ""
+  },
+  "keywords": [],
+  "author": {
+    "name": "",
+    "email": "",
+    "url": ""
+  },
+  "contributors": [],
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/oldbros/shiftjs/issues"
+  },
+  "homepage": "https://github.com/oldbros/shiftjs#readme",
+  "devDependencies": {
+    "@oldbros/tsconfig": "^1.0.1",
+    "@types/node": "^18.11.18",
+    "c8": "^7.12.0",
+    "eslint": "^8.31.0",
+    "eslint-config-oldbros": "^1.0.2",
+    "tap": "^16.3.3",
+    "typedoc": "^0.23.24",
+    "typescript": "^4.9.4"
+  }
+}
