@@ -24,7 +24,7 @@ class LegacyClient extends EventEmitter {
   markets = [];
   collected = false;
   maxMarkets = 1024;
-  initTimeout = 5000;
+  initTimeout = 10000;
   callInterval = 1000;
   limitCalls = 3;
   callsDone = 0;
@@ -99,6 +99,7 @@ class LegacyClient extends EventEmitter {
         this.streamQueue.subscribe.push(stream);
         return;
       }
+      await this.wssApi.ready();
       this.wssApi.subscribe([stream], ++this.callId);
       ++this.callsDone;
       this.diagnosticChannel.emit('call', { symbol, method: 'subscribe', id: this.callId });

@@ -36,7 +36,8 @@ const prepareMarketsAndStreams = (markets, streamTypes) => {
       streams.push(`${symbol}@${type}`));
     return [symbol, market];
   });
-  return [new Map(entries), streams];
+  const mrkts = new Map(entries);
+  return [mrkts, streams];
 };
 
 class BinanceWssApi {
@@ -146,22 +147,22 @@ class BinanceWssApi {
     // Binance api error
     if (msg.error) {
       if (msg.id) this.channel.emit('callback', msg);
-      const err = 'Binance WS API Error: ' + msg.error;
+      const err = 'Binance WS API Error: ' + JSON.stringify(msg);
       return void this.channel.emit('error', err);
     }
     // not a stream message - unwanted message
     if (!msg.stream) {
-      const warn = 'Unwanted Binance WS API message: ' + msg;
+      const warn = 'Unwanted Binance WS API message: ' + JSON.stringify(msg);
       return void this.channel.emit('error', warn);
     }
     /** @type {string[]} */
     const [lowerCaseSymbol, streamType] = msg.stream.split('@');
     // data from stream we were not subscribed
     if (!knownStream(streamType)) {
-      const warn = 'Data from unwanted stream received: ' + msg;
+      const warn = 'Data from unwanted stream received: ' + JSON.stringify(msg);
       return void this.channel.emit('error', warn);
     }
-    const market = this.markets.get(lowerCaseSymbol.toUpperCase());
+    const market = this.markets.get(lowerCaseSymbol);
     const trade = transform[streamType](msg, market, this.exchange);
     return void this.channel.emit('trade', trade);
   };

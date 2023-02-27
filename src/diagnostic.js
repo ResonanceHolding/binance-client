@@ -28,11 +28,11 @@ class DiagnosticChannel extends EventEmitter {
   #callback = (msg) => {
     if (!this.calls.has(msg.id)) {
       if (this.expiredCalls.has(msg.id)) {
-        const err = `Received a callback after call timeout: ${msg}`;
+        const err = `Received a callback after call timeout: ${JSON.stringify(msg)}`;
         this.expiredCalls.delete(msg.id);
         return void this.channel.emit('error', err);
       }
-      const err = 'Received a callback from an unexpected call: ' + msg;
+      const err = 'Received a callback from an unexpected call: ' + JSON.stringify(msg);
       return void this.channel.emit('error', err);
     }
     const [symbol, method] = this.calls.get(msg.id);
