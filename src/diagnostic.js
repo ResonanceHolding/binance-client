@@ -36,9 +36,9 @@ class DiagnosticChannel extends EventEmitter {
       return void this.channel.emit('error', err);
     }
     const [symbol, method] = this.calls.get(msg.id);
-    if (!msg.result || msg.result !== null) {
+    if (msg.result !== null) {
       const err = `Binance API error symbol: ${symbol}, method: ${method}
-      message: ${msg}`;
+      message: ${JSON.stringify(msg)}`;
       this.channel.emit('error', err);
     }
     return void this.calls.delete(msg.id);
