@@ -133,4 +133,4 @@ class LegacyClient extends EventEmitter {
   };
 }
 
-module.exports = { LegacyClient };
+module.exports = { LegacyClient, BinanceWssApi, DiagnosticChannel };

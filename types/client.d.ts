@@ -29,5 +29,7 @@ export class LegacyClient extends EventEmitter implements IClient {
     /** @type {(data: TickerTaskData) => Promise<void>} */
     unsubscribeTrades: (data: TickerTaskData) => Promise<void>;
 }
-import { EventEmitter } from "events";
+import { BinanceWssApi } from "./api.js";
 import { DiagnosticChannel } from "./diagnostic.js";
+import { EventEmitter } from "events";
+export { BinanceWssApi, DiagnosticChannel };
