@@ -11,9 +11,13 @@ export type Market = {
   type?: string;
 };
 
-// Task {
+// TickerTask | Market {
 //   key: 'ALGO/BUSD',
-//   data: { id: 'ALGOBUSD', base: 'ALGO', quote: 'BUSD' }
+//   data: TickerTaskData { 
+//    id: 'ALGOBUSD',
+//    base: 'ALGO',
+//    quote: 'BUSD',
+//   }
 // }
 
 export type TickerTaskData = {
@@ -91,7 +95,6 @@ export interface CcxwsClient {
 //      "T": 1499405254324,	# trade time
 //      "m": false,				  # whether buyer is a maker
 //      "M": true				    # can be ignored
-// }
 //   }
 // }
 export type AggTradeData = {
@@ -159,4 +162,9 @@ export type RawTradeData = {
 export type RawTradeResponse = {
   stream: string;
   data: RawTradeData;
+};
+
+export type CallbackResponse = {
+  id: number;
+  result: null;
 };

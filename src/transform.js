@@ -73,4 +73,7 @@ const transformRawTrade = (msg, market, exchange) => {
   });
 };
 
-module.exports = { Trade, transformAggTrade, transformRawTrade };
+module.exports = {
+  aggTrade: transformAggTrade,
+  trade: transformRawTrade,
+};
