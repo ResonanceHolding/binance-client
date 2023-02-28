@@ -1,7 +1,6 @@
 /**
  * @typedef {import('./types').CcxwsClient} IClient
- * @typedef {import('./types').TickerTaskData} TickerTaskData
- *
+ * @typedef {import('./types').Market} Market
  */
 
 const { EventEmitter } = require('node:events');
@@ -10,8 +9,27 @@ const { mainBaseUrl } = require('./config.js');
 const { DiagnosticChannel } = require('./diagnostic.js');
 const { Err } = require('logger');
 
-const symbolFromStreams = (streams) =>
-  streams.map((stream) => stream.split('@')[0]).join(', ');
+/**
+ * marketToMarketStream - if market is not handled by wss api
+ * tranfsorms market to market stream
+ * @param {Market} market
+ * @returns {[string, Market]}
+ */
+const marketToMarketStream = (market) => {
+  const symbol = market.id.toLowerCase();
+  const stream = symbol + '@aggTrade';
+  return [stream, market];
+};
+
+/** @type {(markets: Market[]) => [string, Market][]} */
+const marketStreamsFrom = (markets) => {
+  const marketStreams = [];
+  for (const market of markets) {
+    const stream = marketToMarketStream(market);
+    if (stream) marketStreams.push(stream);
+  }
+  return marketStreams;
+};
 
 /**
  * @implements {IClient}
@@ -29,108 +47,117 @@ class LegacyClient extends EventEmitter {
   limitCalls = 3;
   callsDone = 0;
   /** @type {{subscribe: string[], unsubscribe: string[]}} */
-  streamQueue = { subscribe: [], unsubscribe: [] };
+  rateLimitQueue = { subscribe: [], unsubscribe: [] };
 
   constructor() {
     super();
     this.diagnosticChannel = new DiagnosticChannel(this);
   }
 
-  connectApi = () => {
-    this.wssApi = new BinanceWssApi(mainBaseUrl, this, this.markets);
+  clearRateLimitQueue = () => {
+    for (const [method, marketStreams] of Object.entries(this.rateLimitQueue)) {
+      this.wssApi[method]([marketStreams], ++this.callId);
+      ++this.callsDone;
+      this.diagnosticChannel.emit('call', { marketStreams, method, id: this.callId });
+    }
+  };
+
+  startRateLimitJob = () => {
+    const interval = setInterval(() => {
+      this.callsDone = 0;
+      this.clearRateLimitQueue();
+    }, this.callInterval);
+
+    this.on('close', () => clearInterval(interval));
+    setTimeout(() => {
+      this.collected = true;
+    }, this.initTimeout);
+  };
+
+  listen = () => {
+    this.on('error', (err) => Err(err));
+    this.on('callback', (event) => {
+      this.diagnosticChannel.emit('callback', event);
+    });
+    this.on('close', (e) => this.diagnosticChannel.emit('close', e));
+    this.startRateLimitJob();
+  };
+
+  start = (markets) => {
+    this.wssApi = new BinanceWssApi(mainBaseUrl, this, markets);
+    this.listen();
     return this.wssApi.ready();
   };
 
-  collectMarkets = (market) => {
-    const count = this.markets.push(market);
-    if (count === 1024) this.collected = true;
+  /**
+   * addToRateLimitQueue - adds streams to rateLimitQueue
+   * @param {string} method
+   * @param {[string, Market][]} marketStreams
+   */
+  addToRateLimitQueue = (method, marketStreams) => {
+    const err = 'Rate limit exceed 4 messages per call per second';
+    this.emit('error', err);
+    marketStreams.forEach(this.rateLimitQueue[method].push);
   };
 
-  /** @type {(market: TickerTaskData) => Promise<void>} */
-  subscribeTrades = async (market) => {
-    if (!this.collected) {
-      this.collectMarkets(market);
-      if (this.firstSub) {
-        this.on('error', (err) => Err(err));
-        this.on('callback', (event) => {
-          this.diagnosticChannel.emit('callback', event);
-        });
-        this.on('close', (e) => this.diagnosticChannel.emit('close', e));
-        const interval = setInterval(() => {
-          this.callsDone = 0;
-
-          if (this.streamQueue.subscribe.length > 0) {
-            const streams = this.streamQueue.subscribe;
-            const symbol = symbolFromStreams(streams);
-            this.wssApi.subscribe([streams], ++this.callId);
-            ++this.callsDone;
-            this.diagnosticChannel.emit('call', { symbol, method: 'subscribe', id: this.callId });
-          }
-
-          if (this.streamQueue.unsubscribe.length > 0) {
-            const streams = this.streamQueue.subscribe;
-            const symbol = symbolFromStreams(streams);
-            this.wssApi.unsubscribe([streams], ++this.callId);
-            ++this.callsDone;
-            this.diagnosticChannel.emit('call', { symbol, method: 'unsubscribe', id: this.callId });
-          }
-        }, this.callInterval);
-
-        this.on('close', () => clearInterval(interval));
-        setTimeout(() => {
-          this.collected = true;
-        }, this.initTimeout);
-      }
-      this.firstSub = false;
-    } else if (!this.active) {
-      await this.connectApi();
-      this.active = true;
-    } else {
-      const symbol = market.id.toLowerCase();
-      if (this.wssApi.markets.has(symbol)) {
-        const err = `Already subsribed to ${symbol}`;
-        return void this.emit(err);
-      }
-      this.wssApi.markets.set(symbol, market);
-      const stream = symbol + '@aggTrade';
-      if (this.callsDone === this.limitCalls) {
-        const err = 'Rate limit exceeded 4 ws messages per second';
-        this.emit('error', err);
-        this.streamQueue.subscribe.push(stream);
-        return;
-      }
-      await this.wssApi.ready();
-      this.wssApi.subscribe([stream], ++this.callId);
-      ++this.callsDone;
-      this.diagnosticChannel.emit('call', { symbol, method: 'subscribe', id: this.callId });
-    }
-  };
-
-  /** @type {(data: TickerTaskData) => Promise<void>} */
-  unsubscribeTrades = async (market) => {
-    if (!this.active) {
-      const err = 'Cannot unsubscribe before ws connection is established';
+  /**
+   * call - generic method to call pub/sub apis
+   * @param {string} method
+   * @param {Market[]} markets
+   * @returns {void}
+   */
+  call = (method, markets) => {
+    if (!this.wssApi?.connected) {
+      const err = `Cannot ${method} before ws connection is established`;
       Err(err);
       return void this.emit('error', err);
     }
-    const symbol = market.id.toLowerCase();
-    if (!this.wssApi.markets.has(symbol)) {
-      const err = `Already unsubsribed to ${symbol}`;
-      Err(err);
-      return void this.emit(err);
-    }
-    this.wssApi.markets.delete(symbol);
-    const stream = symbol + '@aggTrade';
+    const marketStreams = marketStreamsFrom(markets);
     if (this.callsDone === this.limitCalls) {
-      const err = 'Rate limit exceed 4 messages per call per second';
-      this.emit('error', err);
-      this.streamQueue.unsubscribe.push(stream);
-      return;
+      return void this.addToRateLimitQueue(method, marketStreams);
     }
-    this.wssApi.unsubscribe([stream], ++this.callId);
+    this.wssApi[method](marketStreams, ++this.callId);
     ++this.callsDone;
-    this.diagnosticChannel.emit('call', { symbol, method: 'unsubscribe', id: this.callId });
+    this.diagnosticChannel.emit('call', { marketStreams, method, id: this.callId });
   };
+
+  /**
+   * subscribeOne - sub to one symbol (market format)
+   * @param {Market} market
+   */
+  subscribeOne = (market) => {
+    this.call('subscribe', [market]);
+  };
+
+  /**
+   * subscribeMany - sub to many symbols (market format)
+   * @param {Market[]} markets
+   */
+  subscribeMany = (markets) => {
+    this.call('subscribe', markets);
+  };
+
+  /**
+   * unsubscribeOne - unsub from one symbol (market format)
+   * @param {Market} market
+   */
+  unsubscribeOne = (market) => {
+    this.call('unsubscribe', [market]);
+  };
+
+  /**
+   * unsubscribeMany - unsub from many symbols (market format)
+   * @param {Market[]} markets
+   */
+  unsubscribeMany = (markets) => {
+    this.call('unsubscribe', markets);
+  };
+
+  /** @type {(market: Market) => Promise<void>} */
+  subscribeTrades = async (market) => this.subscribeOne(market);
+
+  /** @type {(data: Market) => Promise<void>} */
+  unsubscribeTrades = async (market) => this.unsubscribeOne(market);
 }
 
 module.exports = { LegacyClient, BinanceWssApi, DiagnosticChannel };

@@ -18,28 +18,6 @@ const combineStreamsForUrl = (streams) =>
 const createWssUrl = (baseUrl, streams) =>
   !streams ? baseUrl + STREAM_PFX : baseUrl + STREAM_PFX + combineStreamsForUrl(streams);
 
-const ALLOWED_STREAM_TYPES = ['aggTrade', 'trade'];
-/** @type {(streamType: string) => boolean} */
-const knownStream = (streamType) => ALLOWED_STREAM_TYPES.includes(streamType);
-
-/**
- * @param {Market[]} markets
- * @param {string[]} streamTypes
- * @returns {[Map<string, Market>, string[]]}
- */
-const prepareMarketsAndStreams = (markets, streamTypes) => {
-  const streams = [];
-  /** @type {[string, Market][]} */
-  const entries = markets.map((market) => {
-    const symbol = market.id.toLowerCase();
-    streamTypes.forEach((type) =>
-      streams.push(`${symbol}@${type}`));
-    return [symbol, market];
-  });
-  const mrkts = new Map(entries);
-  return [mrkts, streams];
-};
-
 class BinanceWssApi {
   // State of ws connection
   connected = false;
@@ -56,13 +34,12 @@ class BinanceWssApi {
    * Binance Wss API - responsible for binance WSS API
    * @param {string | URL} baseUrl
    * @param {Pick<Channel, 'emit'>} channel
-   * @param {Market[]} markets
-   * @param {string[]} streamTypes
+   * @param {[string, Market][]} marketStreams
    */
-  constructor(baseUrl, channel, markets, streamTypes = ['aggTrade']) {
+  constructor(baseUrl, channel, marketStreams) {
     this.channel = channel;
-    const [mrkts, streams] = prepareMarketsAndStreams(markets, streamTypes);
-    this.markets = mrkts;
+    this.marketStreams = new Map(marketStreams);
+    const streams = [...this.marketStreams.keys()];
     this.wssUrl = createWssUrl(baseUrl.toString(), streams);
     this.open();
   }
@@ -155,47 +132,62 @@ class BinanceWssApi {
       const warn = 'Unwanted Binance WS API message: ' + JSON.stringify(msg);
       return void this.channel.emit('error', warn);
     }
-    /** @type {string[]} */
-    const [lowerCaseSymbol, streamType] = msg.stream.split('@');
+    const { stream } = msg;
     // data from stream we were not subscribed
-    if (!knownStream(streamType)) {
+    if (!this.marketStreams[stream]) {
       const warn = 'Data from unwanted stream received: ' + JSON.stringify(msg);
       return void this.channel.emit('error', warn);
     }
-    const market = this.markets.get(lowerCaseSymbol);
+    const market = this.marketStreams[stream];
+    const [_, streamType] = stream.split(stream);
     const trade = transform[streamType](msg, market, this.exchange);
     return void this.channel.emit('trade', trade);
   };
 
   /**
-   * sucbscribe - accepts an array of binance streams in lower case
+   * sucbscribe - accepts an array of binance marketStreams in lower case
    * and id which binance use to identify request via websocket
    * result:
    *    side effect, subscribes to streams
    *    then socket will start receiving messages from binance streams
-   * example args: (lowerCaseStreams: ['achbusd@aggTrade', 'achbusd@trade'], id: 10)
-   * @type {(lowerCaseStreams: string[], id: number) => void}
+   * @type {(marketStreams: [string, Market][], id: number) => void}
    */
-  subscribe = (lowerCaseStreams, id) =>
+  subscribe = (marketStreams, id) => {
+    const params = [];
+    for (const [stream, market] of marketStreams) {
+      if (!this.marketStreams.has(stream)) {
+        this.marketStreams.set(stream, market);
+        params.push(stream);
+      }
+    }
     this.#socket.send(JSON.stringify({
       method: 'SUBSCRIBE',
-      params: lowerCaseStreams,
+      params,
       id,
     }));
+  };
 
   /**
-   * unsucbscribe - accepts an array of binance streams in lower case
+   * unsucbscribe - accepts an array of binance marketStreams in lower case
    * and id which binance use to identify request via websocket
    * result: side effect, unsubscribes from streams
-   * example args: (lowerCaseStreams: ['achbusd@aggTrade', 'achbusd@trade'], id: 10)
-   * @type {(lowerCaseStreams: string[], id: number) => void}
+   * example args: (marketStreams: ['achbusd@aggTrade', 'achbusd@trade'], id: 10)
+   * @type {(marketStreams: [string, Market][], id: number) => void}
    */
-  unsubscribe = (lowerCaseStreams, id) =>
+  unsubscribe = (marketStreams, id) => {
+    const params = [];
+    for (const [stream, _] of marketStreams) {
+      if (!this.marketStreams.has(stream)) {
+        this.marketStreams.delete(stream);
+        params.push(stream);
+      }
+    }
     this.#socket.send(JSON.stringify({
       method: 'UNSUBSCRIBE',
-      params: lowerCaseStreams,
+      params,
       id,
     }));
+  };
 }
 
 module.exports = { BinanceWssApi, createWssUrl };
