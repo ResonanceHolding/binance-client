@@ -58,6 +58,7 @@ class LegacyClient extends EventEmitter {
 
   clearRateLimitQueue = () => {
     for (const [method, marketStreams] of Object.entries(this.rateLimitQueue)) {
+      if (marketStreams.length === 0) return;
       this.wssApi[method]([marketStreams], ++this.callId);
       ++this.callsDone;
       this.diagnosticChannel.emit('call', { marketStreams, method, id: this.callId });
@@ -163,11 +164,13 @@ class LegacyClient extends EventEmitter {
 
   /** @type {(market: TickerTaskData) => Promise<void>} */
   subscribeTrades = async (data) => {
+    console.dir({ data });
     this.subscribeOne(data);
   };
 
   /** @type {(data: TickerTaskData) => Promise<void>} */
   unsubscribeTrades = async (data) => {
+    console.dir({ data });
     this.unsubscribeOne(data);
   };
 }
