@@ -1,6 +1,7 @@
 /**
  * @typedef {import('./types').CcxwsClient} IClient
- * @typedef {import('./types').Market} Market
+ * @typedef {import('./types').TickerTask} TickerTask
+ * @typedef {import('./types').TickerTaskData} TickerTaskData
  */
 
 const { EventEmitter } = require('node:events');
@@ -10,22 +11,22 @@ const { DiagnosticChannel } = require('./diagnostic.js');
 const { Err } = require('logger');
 
 /**
- * marketToMarketStream - if market is not handled by wss api
+ * marketToMarketStream - if TickerTaskData is not handled by wss api
  * tranfsorms market to market stream
- * @param {Market} market
- * @returns {[string, Market]}
+ * @param {TickerTaskData} data
+ * @returns {[string, TickerTaskData]}
  */
-const marketToMarketStream = (market) => {
-  const symbol = market.id.toLowerCase();
+const marketToMarketStream = (data) => {
+  const symbol = data.id.toLowerCase();
   const stream = symbol + '@aggTrade';
-  return [stream, market];
+  return [stream, data];
 };
 
-/** @type {(markets: Market[]) => [string, Market][]} */
+/** @type {(markets: TickerTask[]) => [string, TickerTaskData][]} */
 const marketStreamsFrom = (markets) => {
   const marketStreams = [];
-  for (const market of markets) {
-    const stream = marketToMarketStream(market);
+  for (const { data } of markets) {
+    const stream = marketToMarketStream(data);
     if (stream) marketStreams.push(stream);
   }
   return marketStreams;
@@ -56,6 +57,11 @@ class LegacyClient extends EventEmitter {
 
   clearRateLimitQueue = () => {
     for (const [method, marketStreams] of Object.entries(this.rateLimitQueue)) {
+      if (marketStreams.length === 0) {
+        return;
+      } else {
+        console.dir({ marketStreams });
+      }
       this.wssApi[method]([marketStreams], ++this.callId);
       ++this.callsDone;
       this.diagnosticChannel.emit('call', { marketStreams, method, id: this.callId });
@@ -83,16 +89,22 @@ class LegacyClient extends EventEmitter {
     this.startRateLimitJob();
   };
 
-  start = (markets) => {
-    this.wssApi = new BinanceWssApi(mainBaseUrl, this, markets);
+  /**
+   *
+   * @param {TickerTask[]} markets
+   * @returns {Promise<void>}
+   */
+  start = async (markets) => {
+    const streamMarkets = marketStreamsFrom(markets);
+    this.wssApi = new BinanceWssApi(mainBaseUrl, this, streamMarkets);
+    await this.wssApi.ready();
     this.listen();
-    return this.wssApi.ready();
   };
 
   /**
    * addToRateLimitQueue - adds streams to rateLimitQueue
    * @param {string} method
-   * @param {[string, Market][]} marketStreams
+   * @param {[string, TickerTaskData][]} marketStreams
    */
   addToRateLimitQueue = (method, marketStreams) => {
     const err = 'Rate limit exceed 4 messages per call per second';
@@ -103,7 +115,7 @@ class LegacyClient extends EventEmitter {
   /**
    * call - generic method to call pub/sub apis
    * @param {string} method
-   * @param {Market[]} markets
+   * @param {TickerTask[]} markets
    * @returns {void}
    */
   call = (method, markets) => {
@@ -123,7 +135,7 @@ class LegacyClient extends EventEmitter {
 
   /**
    * subscribeOne - sub to one symbol (market format)
-   * @param {Market} market
+   * @param {TickerTask} market
    */
   subscribeOne = (market) => {
     this.call('subscribe', [market]);
@@ -131,7 +143,7 @@ class LegacyClient extends EventEmitter {
 
   /**
    * subscribeMany - sub to many symbols (market format)
-   * @param {Market[]} markets
+   * @param {TickerTask[]} markets
    */
   subscribeMany = (markets) => {
     this.call('subscribe', markets);
@@ -139,7 +151,7 @@ class LegacyClient extends EventEmitter {
 
   /**
    * unsubscribeOne - unsub from one symbol (market format)
-   * @param {Market} market
+   * @param {TickerTask} market
    */
   unsubscribeOne = (market) => {
     this.call('unsubscribe', [market]);
@@ -147,17 +159,29 @@ class LegacyClient extends EventEmitter {
 
   /**
    * unsubscribeMany - unsub from many symbols (market format)
-   * @param {Market[]} markets
+   * @param {TickerTask[]} markets
    */
   unsubscribeMany = (markets) => {
     this.call('unsubscribe', markets);
   };
 
-  /** @type {(market: Market) => Promise<void>} */
-  subscribeTrades = async (market) => this.subscribeOne(market);
+  /** @type {(market: TickerTask) => Promise<void>} */
+  subscribeTrades = async (market) => {
+    console.dir({ market });
+    return;
+    if (!market) {
 
-  /** @type {(data: Market) => Promise<void>} */
-  unsubscribeTrades = async (market) => this.unsubscribeOne(market);
+    }
+    this.subscribeOne(market);
+  };
+
+  /** @type {(data: TickerTask) => Promise<void>} */
+  unsubscribeTrades = async (market) => {
+    console.dir({ market });
+    return;
+
+    this.unsubscribeOne(market);
+  };
 }
 
 module.exports = { LegacyClient, BinanceWssApi, DiagnosticChannel };

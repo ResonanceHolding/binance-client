@@ -134,12 +134,12 @@ class BinanceWssApi {
     }
     const { stream } = msg;
     // data from stream we were not subscribed
-    if (!this.marketStreams[stream]) {
+    if (!this.marketStreams.has(stream)) {
       const warn = 'Data from unwanted stream received: ' + JSON.stringify(msg);
       return void this.channel.emit('error', warn);
     }
-    const market = this.marketStreams[stream];
-    const [_, streamType] = stream.split(stream);
+    const market = this.marketStreams.get(stream);
+    const [_, streamType] = stream.split('@');
     const trade = transform[streamType](msg, market, this.exchange);
     return void this.channel.emit('trade', trade);
   };
