@@ -2,6 +2,7 @@
  * @typedef {import('./types').CcxwsClient} IClient
  * @typedef {import('./types').TickerTask} TickerTask
  * @typedef {import('./types').TickerTaskData} TickerTaskData
+ * @typedef {Pick<TickerTask, 'data'>} TikerTaskOnlyData
  */
 
 const { EventEmitter } = require('node:events');
@@ -22,7 +23,7 @@ const marketToMarketStream = (data) => {
   return [stream, data];
 };
 
-/** @type {(markets: TickerTask[]) => [string, TickerTaskData][]} */
+/** @type {(markets: TikerTaskOnlyData[]) => [string, TickerTaskData][]} */
 const marketStreamsFrom = (markets) => {
   const marketStreams = [];
   for (const { data } of markets) {
@@ -57,11 +58,6 @@ class LegacyClient extends EventEmitter {
 
   clearRateLimitQueue = () => {
     for (const [method, marketStreams] of Object.entries(this.rateLimitQueue)) {
-      if (marketStreams.length === 0) {
-        return;
-      } else {
-        console.dir({ marketStreams });
-      }
       this.wssApi[method]([marketStreams], ++this.callId);
       ++this.callsDone;
       this.diagnosticChannel.emit('call', { marketStreams, method, id: this.callId });
@@ -115,7 +111,7 @@ class LegacyClient extends EventEmitter {
   /**
    * call - generic method to call pub/sub apis
    * @param {string} method
-   * @param {TickerTask[]} markets
+   * @param {TikerTaskOnlyData[]} markets
    * @returns {void}
    */
   call = (method, markets) => {
@@ -135,10 +131,10 @@ class LegacyClient extends EventEmitter {
 
   /**
    * subscribeOne - sub to one symbol (market format)
-   * @param {TickerTask} market
+   * @param {TickerTaskData} data
    */
-  subscribeOne = (market) => {
-    this.call('subscribe', [market]);
+  subscribeOne = (data) => {
+    this.call('subscribe', [{ data }]);
   };
 
   /**
@@ -151,10 +147,10 @@ class LegacyClient extends EventEmitter {
 
   /**
    * unsubscribeOne - unsub from one symbol (market format)
-   * @param {TickerTask} market
+   * @param {TickerTaskData} data
    */
-  unsubscribeOne = (market) => {
-    this.call('unsubscribe', [market]);
+  unsubscribeOne = (data) => {
+    this.call('unsubscribe', [{ data }]);
   };
 
   /**
@@ -165,22 +161,14 @@ class LegacyClient extends EventEmitter {
     this.call('unsubscribe', markets);
   };
 
-  /** @type {(market: TickerTask) => Promise<void>} */
-  subscribeTrades = async (market) => {
-    console.dir({ market });
-    return;
-    if (!market) {
-
-    }
-    this.subscribeOne(market);
+  /** @type {(market: TickerTaskData) => Promise<void>} */
+  subscribeTrades = async (data) => {
+    this.subscribeOne(data);
   };
 
-  /** @type {(data: TickerTask) => Promise<void>} */
-  unsubscribeTrades = async (market) => {
-    console.dir({ market });
-    return;
-
-    this.unsubscribeOne(market);
+  /** @type {(data: TickerTaskData) => Promise<void>} */
+  unsubscribeTrades = async (data) => {
+    this.unsubscribeOne(data);
   };
 }
 
