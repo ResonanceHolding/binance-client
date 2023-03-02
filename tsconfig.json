@@ -1,6 +1,9 @@
 {
   "extends": "@oldbros/tsconfig",
   "include": ["src/**/*"],
+  "compilerOptions": {
+    "strictNullChecks": false
+  },
   "typedocOptions": {
     "name": "Documentation",
     "includeVersion": true,
