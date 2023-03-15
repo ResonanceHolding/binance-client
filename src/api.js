@@ -120,10 +120,10 @@ class BinanceWssApi {
       return void this.channel.emit('error', err);
     }
     // Callback - result from a subsribe or unsubscribe command
-    if (msg.result === null && msg.id) return void this.channel.emit('callback', msg);
+    if (msg.result === null && msg.id) return;
     // Binance api error
     if (msg.error) {
-      if (msg.id) this.channel.emit('callback', msg);
+      if (msg.id) return;
       const err = 'Binance WS API Error: ' + JSON.stringify(msg);
       return void this.channel.emit('error', err);
     }

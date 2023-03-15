@@ -8,7 +8,6 @@
 const { EventEmitter } = require('node:events');
 const { BinanceWssApi } = require('./api.js');
 const { mainBaseUrl } = require('./config.js');
-const { DiagnosticChannel } = require('./diagnostic.js');
 const { Err } = require('logger');
 
 /**
@@ -53,7 +52,6 @@ class LegacyClient extends EventEmitter {
 
   constructor() {
     super();
-    this.diagnosticChannel = new DiagnosticChannel(this);
   }
 
   clearRateLimitQueue = () => {
@@ -61,7 +59,6 @@ class LegacyClient extends EventEmitter {
       if (marketStreams.length === 0) return;
       this.wssApi[method]([marketStreams], ++this.callId);
       ++this.callsDone;
-      this.diagnosticChannel.emit('call', { marketStreams, method, id: this.callId });
     }
   };
 
@@ -79,10 +76,6 @@ class LegacyClient extends EventEmitter {
 
   listen = () => {
     this.on('error', (err) => Err(err));
-    this.on('callback', (event) => {
-      this.diagnosticChannel.emit('callback', event);
-    });
-    this.on('close', (e) => this.diagnosticChannel.emit('close', e));
     this.startRateLimitJob();
   };
 
@@ -127,7 +120,6 @@ class LegacyClient extends EventEmitter {
     }
     this.wssApi[method](marketStreams, ++this.callId);
     ++this.callsDone;
-    this.diagnosticChannel.emit('call', { marketStreams, method, id: this.callId });
   };
 
   /**
@@ -175,4 +167,4 @@ class LegacyClient extends EventEmitter {
   };
 }
 
-module.exports = { LegacyClient, BinanceWssApi, DiagnosticChannel };
+module.exports = { LegacyClient, BinanceWssApi };
