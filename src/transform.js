@@ -4,13 +4,13 @@ class Trade {
     this.quote = props.quote;
     this.base = props.base;
     this.tradeId = props.tradeId;
-    this.sequenceId = props.sequenceId;
-    this.unix = props.unix;
+    this.sequenceId = props.sequenceId || '';
+    this.unix = String(props.unix);
     this.side = props.side;
     this.price = props.price;
     this.amount = props.amount;
-    this.buyOrderId = props.buyOrderId;
-    this.sellOrderId = props.sellOrderId;
+    this.buyOrderId = props.buyOrderId || '';
+    this.sellOrderId = props.sellOrderId || '';
 
     // attach any extra props
     for (const key in props) {

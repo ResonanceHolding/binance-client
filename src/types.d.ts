@@ -47,13 +47,13 @@ export type Trade = {
   quote: string;
   base: string;
   tradeId: string;
-  sequenceId?: string;
-  unix: number;
+  sequenceId: string;
+  unix: string;
   side: string;
   price: string;
   amount: string;
-  buyOrderId?: string;
-  sellOrderId?: string;
+  buyOrderId: string;
+  sellOrderId: string;
 };
 
 export type TradeHandler = (trade: Trade) => void;
