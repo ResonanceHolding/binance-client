@@ -73,7 +73,35 @@ const transformRawTrade = (msg, market, exchange) => {
   });
 };
 
+class TransfomrError extends Error {
+  constructor(message, symbol) {
+    super(`${message} in symbol ${symbol}`);
+    this.symbol = symbol;
+  }
+}
+
+const transformOneSymbolInfo = (exchange, symbolInfo) => {
+  const { symbol, baseAsset: base, quoteAsset: quote, filters } = symbolInfo;
+  const priceInfo = filters.find(({ filterType }) => filterType === 'PRICE_FILTER');
+  if (!priceInfo) return [new TransfomrError('No price info', symbol), null];
+  const { minPrice, maxPrice } = priceInfo;
+  const result = { exchange, symbol, base, quote, minPrice, maxPrice };
+  return [null, result];
+};
+
+const transfromSymbolsInfo = (exchange, symbolsInfo) => {
+  const { errors, results } = symbolsInfo.reduce((acc, symbolInfo) => {
+    const [err, res] = transformOneSymbolInfo(exchange, symbolInfo);
+    if (err) acc.errors.push(err);
+    else acc.results.push(res);
+    return acc;
+  }, { errors: [], results: [] });
+  const err = errors.length === 0 ? null : new AggregateError(errors);
+  return [err, results];
+};
+
 module.exports = {
   aggTrade: transformAggTrade,
   trade: transformRawTrade,
+  symbolsInfo: transfromSymbolsInfo,
 };
