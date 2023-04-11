@@ -14,4 +14,5 @@ declare function transformAggTrade(msg: import('./types').AggTradeResponse, mark
  * @returns {import('./types').Trade}
  */
 declare function transformRawTrade(msg: import('./types').RawTradeResponse, market: import('./types').Market, exchange: string): import('./types').Trade;
-export { transformAggTrade as aggTrade, transformRawTrade as trade };
+declare function transfromSymbolsInfo(exchange: any, symbolsInfo: any): any[];
+export { transformAggTrade as aggTrade, transformRawTrade as trade, transfromSymbolsInfo as symbolsInfo };

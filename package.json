@@ -2,8 +2,8 @@
   "name": "binance-client",
   "version": "0.0.0",
   "description": "",
-  "main": "src/client.js",
-  "types": "types/client.d.ts",
+  "main": "src/binance.js",
+  "types": "types/binance.d.ts",
   "type": "commonjs",
   "scripts": {
     "check": "npx tsc --project tsconfig.json",
@@ -11,7 +11,7 @@
     "lint": "eslint .",
     "fmt": "eslint --fix .",
     "docs": "npx typedoc --entryPointStrategy packages .",
-    "test": "npx c8 --check-coverage tap --no-coverage",
+    "test": "npx c8 --check-coverage --lines 50 --functions 50 --branches 50 --statements 50 tap --no-coverage",
     "final": "npm run fmt && npm run check && npm run lint && npm run test && npm run types && npm run docs"
   },
   "repository": {

@@ -1,3 +1,7 @@
+declare global {
+  function fetch(params: any): Promise<any>;
+}
+
 export type Symbol = string;
 export type StreamType = 'aggTrade' | 'trade';
 export type BinanceStream = Symbol | StreamType;
@@ -13,7 +17,7 @@ export type Market = {
 
 // TickerTask | Market {
 //   key: 'ALGO/BUSD',
-//   data: TickerTaskData { 
+//   data: TickerTaskData {
 //    id: 'ALGOBUSD',
 //    base: 'ALGO',
 //    quote: 'BUSD',

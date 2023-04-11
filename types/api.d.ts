@@ -6,10 +6,9 @@ export class BinanceWssApi {
      * Binance Wss API - responsible for binance WSS API
      * @param {string | URL} baseUrl
      * @param {Pick<Channel, 'emit'>} channel
-     * @param {Market[]} markets
-     * @param {string[]} streamTypes
+     * @param {[string, Market][]} marketStreams
      */
-    constructor(baseUrl: string | URL, channel: Pick<Channel, 'emit'>, markets: Market[], streamTypes?: string[]);
+    constructor(baseUrl: string | URL, channel: Pick<Channel, 'emit'>, marketStreams: [string, Market][]);
     connected: boolean;
     active: boolean;
     exchange: string;
@@ -17,7 +16,7 @@ export class BinanceWssApi {
     reconnectTimeout: number;
     reconnectsDone: number;
     channel: Pick<import("events"), "emit">;
-    markets: Map<string, import("./types").TickerTaskData>;
+    marketStreams: Map<string, import("./types").TickerTaskData>;
     wssUrl: string;
     /**
      * open - open wss api connection
@@ -33,23 +32,22 @@ export class BinanceWssApi {
      */
     ready: () => Promise<void>;
     /**
-     * sucbscribe - accepts an array of binance streams in lower case
+     * sucbscribe - accepts an array of binance marketStreams in lower case
      * and id which binance use to identify request via websocket
      * result:
      *    side effect, subscribes to streams
      *    then socket will start receiving messages from binance streams
-     * example args: (lowerCaseStreams: ['achbusd@aggTrade', 'achbusd@trade'], id: 10)
-     * @type {(lowerCaseStreams: string[], id: number) => void}
+     * @type {(marketStreams: [string, Market][], id: number) => void}
      */
-    subscribe: (lowerCaseStreams: string[], id: number) => void;
+    subscribe: (marketStreams: [string, Market][], id: number) => void;
     /**
-     * unsucbscribe - accepts an array of binance streams in lower case
+     * unsucbscribe - accepts an array of binance marketStreams in lower case
      * and id which binance use to identify request via websocket
      * result: side effect, unsubscribes from streams
-     * example args: (lowerCaseStreams: ['achbusd@aggTrade', 'achbusd@trade'], id: 10)
-     * @type {(lowerCaseStreams: string[], id: number) => void}
+     * example args: (marketStreams: ['achbusd@aggTrade', 'achbusd@trade'], id: 10)
+     * @type {(marketStreams: [string, Market][], id: number) => void}
      */
-    unsubscribe: (lowerCaseStreams: string[], id: number) => void;
+    unsubscribe: (marketStreams: [string, Market][], id: number) => void;
     #private;
 }
 /** @type {(baseUrl: string, streams?: string[]) => string} */
